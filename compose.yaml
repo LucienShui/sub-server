@@ -1,0 +1,10 @@
+name: sub-server
+
+services:
+  server:
+    build: .
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    env_file:
+      - .env
+    restart: always
