@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI, Response
 
 sub_url: str = os.environ["SUB_URL"]
+sub_id: str = os.environ.get("SUB_ID", None)
 api_key: str = os.environ["API_KEY"]
 start_date: datetime = datetime.now()
 app = FastAPI()
@@ -19,9 +20,15 @@ async def health():
 @app.get("/api/v1/subscription")
 async def get_subscription(token: str):
     if token == api_key:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(sub_url)
-            return Response(content=response.text, media_type="text/plain")
+        async with httpx.AsyncClient(transport=httpx.AsyncHTTPTransport(retries=3)) as client:
+            router_response = await client.get(sub_url)
+            if sub_id is None:
+                return Response(content=router_response.text, media_type="text/plain")
+            line: str = next(filter(lambda x: sub_id in x, router_response.text.split("\n")))
+            sub_link: str = line.split("'")[1].strip()
+            sub_response = await client.get(sub_link)
+            assert sub_response.status_code == 200, sub_response.text
+            return Response(content=sub_response.text, media_type="text/plain")
     else:
         return Response(content="Unauthorized", status_code=401)
 
