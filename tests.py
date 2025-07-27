@@ -22,3 +22,19 @@ def test_client():
     text = response.text
     decoded = decode(text)
     print(decoded)
+
+
+def test_sub_link():
+    from util import get_sub_link
+    with open("index.html") as f:
+        html: str = f.read()
+    url: str = get_sub_link(html, "SSSIP002_4")
+    print(url)
+
+
+def test_encode_decode():
+    from util import encode, decode
+    text: str = "Hello World!"
+    encoded: str = encode(text)
+    decoded: str = decode(encoded)
+    assert text == decoded

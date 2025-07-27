@@ -5,6 +5,8 @@ import httpx
 import uvicorn
 from fastapi import FastAPI, Response
 
+from util import get_sub_link
+
 sub_url: str = os.environ["SUB_URL"]
 sub_id: str = os.environ.get("SUB_ID", None)
 api_key: str = os.environ["API_KEY"]
@@ -24,8 +26,7 @@ async def get_subscription(token: str):
             router_response = await client.get(sub_url)
             if sub_id is None:
                 return Response(content=router_response.text, media_type="text/plain")
-            line: str = next(filter(lambda x: sub_id in x, router_response.text.split("\n")))
-            sub_link: str = line.split("'")[1].strip()
+            sub_link: str = get_sub_link(router_response.text, sub_id)
             sub_response = await client.get(sub_link)
             assert sub_response.status_code == 200, sub_response.text
             return Response(content=sub_response.text, media_type="text/plain")
