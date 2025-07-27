@@ -20,7 +20,7 @@ async def health():
 @app.get("/api/v1/subscription")
 async def get_subscription(token: str):
     if token == api_key:
-        async with httpx.AsyncClient(transport=httpx.AsyncHTTPTransport(retries=3)) as client:
+        async with httpx.AsyncClient(timeout=300, transport=httpx.AsyncHTTPTransport(retries=3)) as client:
             router_response = await client.get(sub_url)
             if sub_id is None:
                 return Response(content=router_response.text, media_type="text/plain")
