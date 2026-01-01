@@ -5,13 +5,15 @@ import httpx
 import uvicorn
 from fastapi import FastAPI, Response
 
-from util import get_sub_link
-
-sub_url: str = os.environ["SUB_URL"]
-sub_id: str = os.environ.get("SUB_ID", None)
 api_key: str = os.environ["API_KEY"]
 start_date: datetime = datetime.now()
 app = FastAPI()
+
+DATA_DIR = "data"
+filename = "subscription.txt"
+
+if not os.path.exists(DATA_DIR):
+    os.mkdir(DATA_DIR)
 
 
 @app.get("/api/v1/health")
@@ -19,17 +21,29 @@ async def health():
     return {"uptime": (datetime.now() - start_date).total_seconds()}
 
 
+@app.post("/api/v1/subscription")
+async def fetch_subscription(url: str, token: str):
+    if token == api_key:
+        async with httpx.AsyncClient(timeout=300, transport=httpx.AsyncHTTPTransport(retries=3)) as client:
+            sub_response = await client.get(url)
+            assert sub_response.status_code == 200, sub_response.text
+            content: str = sub_response.text
+            with open(os.path.join(DATA_DIR, filename), "w") as f:
+                f.write(content)
+            return Response(content=content, media_type="text/plain")
+    else:
+        return Response(content="Unauthorized", status_code=401)
+
+
 @app.get("/api/v1/subscription")
 async def get_subscription(token: str):
     if token == api_key:
-        async with httpx.AsyncClient(timeout=300, transport=httpx.AsyncHTTPTransport(retries=3)) as client:
-            router_response = await client.get(sub_url)
-            if sub_id is None:
-                return Response(content=router_response.text, media_type="text/plain")
-            sub_link: str = get_sub_link(router_response.text, sub_id)
-            sub_response = await client.get(sub_link)
-            assert sub_response.status_code == 200, sub_response.text
-            return Response(content=sub_response.text, media_type="text/plain")
+        if os.path.exists(os.path.join(DATA_DIR, filename)):
+            with open(os.path.join(DATA_DIR, filename)) as f:
+                content: str = f.read()
+            return Response(content=content, media_type="text/plain")
+        else:
+            return Response(content="Not Found", status_code=404)
     else:
         return Response(content="Unauthorized", status_code=401)
 
